@@ -4,6 +4,10 @@ frontend/dist
 frontend/node_modules
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+# Генерируется при упаковке (AppImage/deb): не храним в репозитории
+build/linux/appimage/loadika-desktop
+build/linux/appimage/ru.mysterentc.loadika-desktop.png
+build/linux/ru.mysterentc.loadika-desktop.desktop
 # Mobile generated (per-machine; overlays hold absolute paths)
 build/ios/xcode/overlay.json
 build/ios/xcode/gen/

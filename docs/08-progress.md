@@ -65,7 +65,9 @@ wails3 dev
 | 4. Одиночная загрузка | ✅ | добавление URL, кнопки качества по фактическим разрешениям (с размером), раскрывающийся список форматов с кодеками, прогресс/статус, отмена; события `task:*`. Состояние панели в Pinia — переживает переключение вкладок |
 | 5. История и очередь | ✅ | история завершённых загрузок (`internal/history`, `HistoryService`, экран «Видео»); **очередь**: строго последовательный запуск (`concurrency = 1`), состояния `queued`/`running`/`paused`, пауза/докачка (`Pause`/`Resume`), сводка и группировка задач в UI |
 | 6. Прокси | ✅ | модель/импорт, пул/стратегии, health-check, автопереключение с retry, `ProxyService` + UI |
-| 7–9 | ⏳ | по `07-roadmap.md` |
+| 7. Пресеты | ➖ | не делаем (пользователь закрыл тему; качество/форматы выбираются в панели загрузки) |
+| 8. Полировка | ⏳ | виртуализация списков, дружелюбные ошибки, локализация |
+| 9. Упаковка и поставка | ✅ | метаданные и версия 0.1.0 приведены в порядок, `LICENSE` (MIT); пакеты Linux/Windows/macOS; **CI-релиз** по тегу (``.github/workflows/release.yml`), `docs/RELEASE.md`; подпись — позже |
 
 ## Ключевые файлы
 
@@ -130,6 +132,12 @@ wails3 dev
   инструмент его пропускает, поэтому `.car` в репозитории не хранится — macOS до пересборки
   использует `icons.icns` (`CFBundleIconFile`).
 - `build/darwin/dmg-file-icon.{png,icns}` — иконка файла в DMG (пересобрана из `appicon.png`).
+
+**Релиз / CI:**
+- `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/RELEASE.md`.
+- `LICENSE` — MIT; та же лицензия в `build/linux/nfpm/nfpm.yaml`.
+- Версия (0.1.0) живёт в `internal/version/version.go`, `build/config.yml`,
+  `build/windows/info.json`, `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.
 
 ## Решение по детальному блоку (3.1g)
 

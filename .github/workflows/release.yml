@@ -1,0 +1,107 @@
+name: Release
+
+# Релиз собирается на «родных» раннерах для каждой ОС: пуш тега вида vX.Y.Z
+# запускает сборку и публикацию GitHub Release. `workflow_dispatch` собирает
+# артефакты без публикации (для проверки).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Версия Wails CLI и системные зависимости для сборки — держим в одном месте.
+env:
+  WAILS_VERSION: v3.0.0-beta.27
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            artifacts: |
+              bin/*.deb
+              bin/*.rpm
+              bin/*.AppImage
+              bin/*.pkg.tar.*
+          - os: windows-latest
+            platform: windows
+            artifacts: |
+              bin/*.exe
+          - os: macos-latest
+            platform: darwin
+            artifacts: |
+              bin/*.dmg
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
+
+      # Linux: стек GTK4 + WebKitGTK 6.0 (см. build/linux/nfpm/nfpm.yaml).
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libwebkitgtk-6.0-dev \
+            libsoup-3.0-dev \
+            build-essential \
+            pkg-config
+
+      # Windows: NSIS — для установщика (create:nsis:installer).
+      - name: Install NSIS (Windows)
+        if: matrix.platform == 'windows'
+        run: choco install nsis -y --no-progress
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Сборка и упаковка платформы (артефакты — в bin/ и build/windows/nsis/).
+      - name: Build & package
+        run: wails3 task ${{ matrix.platform }}:package
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-artifacts
+          if-no-files-found: error
+          path: ${{ matrix.artifacts }}
+
+  release:
+    name: Publish release
+    needs: build
+    # Только по тегу — при ручном запуске (workflow_dispatch) публикации нет.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/**/*

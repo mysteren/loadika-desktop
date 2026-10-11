@@ -172,15 +172,17 @@ tasks:
     dir: build
     cmds:
       - mkdir -p {{.ROOT_DIR}}/build/linux/appimage
-      - wails3 generate .desktop -name "{{.APP_NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.ROOT_DIR}}/build/linux/{{.DESKTOP_NAME}}.desktop" -categories "{{.CATEGORIES}}"
+      - wails3 generate .desktop -name "{{.DISPLAY_NAME}}" -exec "{{.EXEC}}" -icon "{{.ICON}}" -outputfile "{{.ROOT_DIR}}/build/linux/{{.DESKTOP_NAME}}.desktop" -categories "{{.CATEGORIES}}"
     vars:
       APP_NAME: '{{.APP_NAME}}'
+      # Отображаемое имя в меню приложений (бинарь — loadika-desktop, имя — Loadika).
+      DISPLAY_NAME: 'Loadika'
       EXEC: '{{.APP_NAME}}'
       # Имя .desktop и иконки должно совпадать с Linux ApplicationID приложения
       # (ru.mysterentc.loadika-desktop) — иначе рабочий стол не сопоставит окно с иконкой.
       DESKTOP_NAME: 'ru.mysterentc.loadika-desktop'
       ICON: 'ru.mysterentc.loadika-desktop'
-      CATEGORIES: 'Development;'
+      CATEGORIES: 'AudioVideo;Utility;'
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.DESKTOP_NAME}}.desktop'
 
   install:user:desktop:
@@ -204,7 +206,7 @@ tasks:
         Name=Loadika
         Exec=$BIN
         Icon=$ID
-        Categories=Development;
+        Categories=AudioVideo;Utility;
         Terminal=false
         StartupNotify=false
         StartupWMClass=$ID
