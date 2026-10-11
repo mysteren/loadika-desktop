@@ -142,10 +142,12 @@ type entry struct {
 	pauseReq bool      // для запущенной задачи: запрошена пауза (а не отмена)
 	logs     []LogLine // журнал событий задачи
 
-	// pid запущенного процесса yt-dlp текущей попытки; 0 — процесса нет. Нужен, чтобы на Windows
+	// pid запущенного процесса yt-dlp текущей попытки; 0 — процесса нет. procStarted — момент
+	// запуска процесса (для проверки возраста при определении живости). Нужны, чтобы на Windows
 	// отличить ложную «отмену контекста» (сигнал консоли помечает ctx отменённым, но процесс
 	// продолжает качать) от реальной остановки: перед сменой статуса сверяем живость по PID.
-	pid int
+	pid         int
+	procStarted time.Time
 
 	// Задание для планировщика (запускается, когда освободится слот).
 	bin        string
@@ -772,12 +774,34 @@ func (m *Manager) attempt(ctx context.Context, id, bin string, opts ytdlp.Option
 		}
 
 		start := time.Now()
-		// Публикуем PID процесса в задаче: менеджер по нему проверяет живость загрузки,
-		// чтобы отличить ложную «отмену контекста» на Windows от реальной остановки.
+		// Публикуем PID процесса в задаче СРАЗУ после cmd.Start() (через h.Cmd): менеджер по нему
+		// проверяет живость загрузки, чтобы отличить ложную «отмену контекста» на Windows от
+		// реальной остановки. Если бы PID публиковался только после возврата m.run, проверка
+		// живости в этот промежуток видела бы pid==0 и ложно считала процесс мёртвым.
 		var curCmd *exec.Cmd
 		attemptHandlers.Cmd = &curCmd
+		witness := func() {
+			if pid := procPID(curCmd); pid > 0 {
+				m.setProcPID(id, pid, start)
+			}
+		}
+		prevProg := attemptHandlers.Progress
+		attemptHandlers.Progress = func(p ytdlp.Progress) {
+			witness()
+			if prevProg != nil {
+				prevProg(p)
+			}
+		}
+		prevFile := attemptHandlers.File
+		attemptHandlers.File = func(path string) {
+			witness()
+			if prevFile != nil {
+				prevFile(path)
+			}
+		}
 		runErr := m.run(attemptCtx, bin, args, attemptHandlers)
-		m.setProcPID(id, procPID(curCmd))
+		witness() // на случай процесса без единой строки вывода
+		m.clearStalePID(id, curCmd)
 		stopWatch()
 		wasSlow := errors.Is(context.Cause(attemptCtx), errTooSlow)
 		cancelAttempt(nil)
@@ -987,14 +1011,26 @@ func (m *Manager) setFilePath(id, path string) {
 }
 
 // setProcPID запоминает PID процесса текущей попытки загрузки (0 — процесс завершился или
-// не запускался). Вызывается из attempt сразу после возврата m.run.
-func (m *Manager) setProcPID(id string, pid int) {
+// не запускался) и время его запуска. Вызывается из attempt сразу после старта процесса
+// (первый вывод/после возврата m.run).
+func (m *Manager) setProcPID(id string, pid int, startedAt time.Time) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if e := m.tasks[id]; e != nil {
 		e.pid = pid
+		e.procStarted = startedAt
 	}
+}
+
+// clearStalePID снимает учёт PID, если процесс этой попытки уже завершён к моменту возврата
+// m.run: иначе проверка живости может ложно принять повторное использование PID системой
+// за «загрузка продолжается».
+func (m *Manager) clearStalePID(id string, cmd *exec.Cmd) {
+	if cmd == nil || cmd.ProcessState == nil {
+		return // процесс мог быть убит без состояния — оставляем PID для проверки живости
+	}
+	m.setProcPID(id, 0, time.Time{})
 }
 
 // processAlive сообщает, жив ли ещё процесс yt-dlp этой задачи. Используется, чтобы на Windows
@@ -1002,12 +1038,12 @@ func (m *Manager) setProcPID(id string, pid int) {
 // остаётся в состоянии running.
 func (m *Manager) processAlive(id string) bool {
 	m.mu.Lock()
-	pid := 0
+	pid, started := 0, time.Time{}
 	if e := m.tasks[id]; e != nil {
-		pid = e.pid
+		pid, started = e.pid, e.procStarted
 	}
 	m.mu.Unlock()
-	return pid > 0 && procAlive(pid)
+	return pid > 0 && procAlive(pid, started)
 }
 
 // procPID возвращает PID процесса cmd (0 — процесс не публиковался/завершён без состояния).
