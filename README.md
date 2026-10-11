@@ -80,7 +80,7 @@ wails3 generate bindings -clean=true -ts -i
 
 ## Релиз
 
-Порядок выпуска версий и публикации артефактов — в [`docs/RELEASE.md`](./docs/RELEASE.md).
+Порядок сборки и выпуска версий — в [`docs/BUILD-AND-RELEASE.md`](./docs/BUILD-AND-RELEASE.md).
 
 ## Лицензия
 

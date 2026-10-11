@@ -36,8 +36,7 @@ Loadika Desktop — кроссплатформенное (Linux / Windows / macO
 | [`06-conventions.md`](./06-conventions.md) | Соглашения кода (TS strict, Go, производительность) |
 | [`07-roadmap.md`](./07-roadmap.md) | Пошаговый план разработки маленькими этапами |
 | [`08-progress.md`](./08-progress.md) | Текущий статус + промпт для продолжения в новой сессии |
-| [`BUILD.md`](./BUILD.md) | Справочник-шпаргалка: сборка и упаковка под Linux/Windows/macOS |
-| [`RELEASE.md`](./RELEASE.md) | Как выпустить релиз: версия, CI, публикация артефактов |
+| [`BUILD-AND-RELEASE.md`](./BUILD-AND-RELEASE.md) | Гайд: как собрать и как выпустить релиз (версия, CI, артефакты, требования, troubleshooting) |
 
 ## Статус
 

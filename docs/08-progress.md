@@ -67,7 +67,7 @@ wails3 dev
 | 6. Прокси | ✅ | модель/импорт, пул/стратегии, health-check, автопереключение с retry, `ProxyService` + UI |
 | 7. Пресеты | ➖ | не делаем (пользователь закрыл тему; качество/форматы выбираются в панели загрузки) |
 | 8. Полировка | ⏳ | виртуализация списков, дружелюбные ошибки, локализация |
-| 9. Упаковка и поставка | ✅ | метаданные и версия 0.1.0 приведены в порядок, `LICENSE` (MIT); пакеты Linux/Windows/macOS; **CI-релиз** по тегу (``.github/workflows/release.yml`), `docs/RELEASE.md`; подпись — позже |
+| 9. Упаковка и поставка | ✅ | метаданные и версия приведены в порядок, `LICENSE` (MIT); пакеты Linux/Windows/macOS; **CI-релиз** по тегу (`.github/workflows/release.yml`), гайд `docs/BUILD-AND-RELEASE.md`; подпись — позже |
 
 ## Ключевые файлы
 
@@ -123,7 +123,7 @@ wails3 dev
   `app.Run` → `application.Options.Icon` (Windows/macOS; GTK3-сборка Linux).
 - На Linux по умолчанию GTK4: иконка окна берётся не из приложения, а из `.desktop` по app-id
   `ru.mysterentc.loadika-desktop` (`LinuxOptions.ApplicationID`); имя `.desktop` и иконки в теме
-  должно совпадать с этим id (см. `docs/BUILD.md` → «Иконка на Linux»).
+  должно совпадать с этим id (см. `docs/BUILD-AND-RELEASE.md` → «Иконки, метаданные и AppImage»).
 - `tools/appicon/` — отдельный Go-модуль-генератор `appicon.png` из логотипа (не тянет зависимости
   в основной модуль; `-scale` по умолчанию 0.9 — под квадратный viewBox нового знака).
   Запуск: `cd tools/appicon && go run . -in ../../frontend/public/logo.svg -out ../../build/appicon.png`.
@@ -137,8 +137,8 @@ wails3 dev
 - `build/darwin/dmg-file-icon.{png,icns}` — иконка файла в DMG (пересобрана из `appicon.png`).
 
 **Релиз / CI:**
-- `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/RELEASE.md`.
-  AppImage собирается через `linuxdeploy` **без бандлинга** библиотек (системные GTK4/WebKitGTK 6.0) — см. `docs/BUILD.md`.
+- `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/BUILD-AND-RELEASE.md`.
+  AppImage собирается через `linuxdeploy` **без бандлинга** библиотек (системные GTK4/WebKitGTK 6.0) — там же.
 - `LICENSE` — MIT; та же лицензия в `build/linux/nfpm/nfpm.yaml`.
 - Версия (0.1.0) живёт в `internal/version/version.go`, `build/config.yml`,
   `build/windows/info.json`, `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.
