@@ -15,8 +15,8 @@ Workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) з�
 | ОС | Раннер | Команда | Артефакты |
 |----|--------|---------|-----------|
 | Linux | `ubuntu-24.04` | `wails3 task linux:package` | `.deb`, `.rpm`, `.AppImage`, `.pkg.tar.zst` (AUR) |
-| Windows | `windows-latest` | `wails3 task windows:package` | установщик NSIS `loadika-desktop-installer.exe` |
-| macOS | `macos-latest` | `wails3 task darwin:package:dmg` | `.dmg` (внутри — `.app`) |
+| Windows | `windows-latest` | `windows:build` + zip, затем NSIS | портативный `.zip` и установщик NSIS `loadika-desktop-amd64-installer.exe` |
+| macOS | `macos-latest` | `darwin:package:universal` + `create:dmg` | универсальный `.dmg` (Intel + Apple Silicon) |
 
 После успешной сборки job `release` скачивает артефакты и создаёт GitHub Release с заметками
 (`softprops/action-gh-release`, `generate_release_notes: true`).

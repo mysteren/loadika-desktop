@@ -81,8 +81,8 @@
 ## Этап 9. Упаковка и поставка
 
 - [x] Linux: `deb`, `rpm`, `AppImage`, `pkg.tar.zst` (AUR) — `wails3 task linux:package`.
-- [x] Windows: установщик NSIS — `wails3 task windows:package` (portable zip — нет).
-- [x] macOS: `dmg` — `wails3 task darwin:package:dmg` (сделано в задачах; проверяется в CI).
+- [x] Windows: установщик NSIS + портативный `.zip` (портативный zip — как основной артефакт).
+- [x] macOS: универсальный `dmg` (Intel + Apple Silicon) — `darwin:package:universal` + `create:dmg`.
 - [x] Метаданные (имя/идентификатор/версия/копирайт/лицензия) приведены в порядок; версия — 0.1.0.
 - [x] CI: сборка и публикация GitHub Release по тегу `v*` (`.github/workflows/release.yml`).
 - [x] Убедиться, что **инсталлятор не содержит внешних бинарников** (зависимости ставятся в рантайме).
