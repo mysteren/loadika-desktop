@@ -34,6 +34,7 @@ jobs:
             platform: windows
             artifacts: |
               bin/*.exe
+              bin/*.zip
           - os: macos-latest
             platform: darwin
             artifacts: |
@@ -86,7 +87,19 @@ jobs:
 
       - name: Build & package (Windows)
         if: matrix.platform == 'windows'
-        run: wails3 task windows:package
+        shell: pwsh
+        run: |
+          wails3 task windows:build
+          Compress-Archive -Path bin/loadika-desktop.exe -DestinationPath bin/loadika-desktop-windows-amd64.zip -Force
+
+      # NSIS-установщик — опционален: даже если makensis/бутстраппер недоступны,
+      # портативный .zip уже собран выше, и job не падает.
+      - name: Installer (Windows, NSIS)
+        if: matrix.platform == 'windows'
+        continue-on-error: true
+        run: |
+          makensis /VERSION
+          wails3 task windows:package
 
       # macOS: универсальный бинарник (Intel + Apple Silicon) и .dmg.
       - name: Build & package (macOS)
