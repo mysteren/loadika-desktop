@@ -13,13 +13,20 @@ import (
 	"unsafe"
 )
 
-// Поддержка длинных путей Windows (> MAX_PATH = 260 символов). ShellExecuteW возвращает
-// SE_ERR_FILENOTFOUND (код 2), если путь слишком длинный и не использует префикс \\?\ —
-// файл при этом существует. Имена торрентов часто длинные, поэтому путь в папке загрузок
-// легко превышает 260 символов. Решения по порядку:
-//   - 8.3-имя (GetShortPathNameW) — работает даже без включения поддержки длинных путей;
-//   - префикс \\?\ с нормализованным абсолютным путём;
+// Поддержка длинных путей Windows (> MAX_PATH = 260 символов). ShellExecuteW и explorer
+// возвращают SE_ERR_FILENOTFOUND (код 2), если путь слишком длинный — файл при этом
+// существует. Имена торрентов часто длинные, поэтому путь в папке загрузок легко
+// превышает 260 символов. Решения по порядку:
+//   - 8.3-имя хвоста пути (последних компонентов) — работает даже без включения поддержки
+//     длинных путей и не зависит от того, понимает ли плеер префикс \\?\;
+//   - префикс \\?\ с нормализованным абсолютным путём (для приложений, умеющих длинные
+//     пути);
 //   - если ничего не помогло — понятная ошибка вместо голого «кода 2».
+//
+// Кириллица в именах сама по себе не проблема: Go передаёт UTF-16 корректно («кракозябры»
+// в сообщениях — это только отображение в консоли OEM-кодировкой). Реальная причина кода 2
+// — длина пути (кириллические имена торрентов как раз длинные) и отсутствие рабочей
+// ассоциации .webm с обычным Win32-приложением.
 
 const (
 	// maxPathLegacy — лимит WinAPI без префикса \\?\.
@@ -33,9 +40,17 @@ const (
 
 	// createDetached — CREATE_NEW_PROCESS_GROUP: запуск без нового окна консоли.
 	createDetached = 0x00000200
+
+	// Константы WinAPI, отсутствующие в пакете syscall.
+	windowsFileReadAttributes      = 0x00000080
+	windowsFileShareAll            = 0x00000007
+	windowsFileFlagBackupSemantics = 0x02000000
 )
 
-var procGetShortPathNameW = kernel32.NewProc("GetShortPathNameW")
+var (
+	procGetShortPathNameW          = kernel32.NewProc("GetShortPathNameW")
+	procGetFileInformationByHandle = kernel32.NewProc("GetFileInformationByHandle")
+)
 
 // lastShellErrCode — последний код ошибки ShellExecuteW (для сообщения пользователю).
 var lastShellErrCode uintptr
@@ -57,8 +72,8 @@ func toExtendedPath(p string) string {
 	return `\\?\` + filepath.Clean(p)
 }
 
-// shortPath возвращает 8.3-имя пути (короткая форма гарантированно короче 260 символов).
-// Пустой результат — путь не найден или том без поддержки 8.3 имён.
+// shortPath возвращает 8.3-имя всего пути (GetShortPathNameW). Пустой результат — путь
+// не найден или том без поддержки 8.3 имён.
 func shortPath(p string) string {
 	src, err := syscall.UTF16PtrFromString(p)
 	if err != nil {
@@ -82,6 +97,96 @@ func shortPath(p string) string {
 	return ""
 }
 
+// byHandleInfo — структура BY_HANDLE_FILE_INFORMATION (раскладка соответствует WinAPI:
+// 10 DWORD до cFileName, затем 520 байт имени и ещё один DWORD).
+type byHandleInfo struct {
+	DwFileAttributes     uint32
+	FtCreationTime       syscall.Filetime
+	FtLastAccessTime     syscall.Filetime
+	FtLastWriteTime      syscall.Filetime
+	DwVolumeSerialNumber uint32
+	NFileSizeHigh        uint32
+	NFileSizeLow         uint32
+	DwNumberOfLinks      uint32
+	DwFileIndexHigh      uint32
+	DwFileIndexLow       uint32
+	CFileName            [260]uint16
+	DwReserved           uint32
+}
+
+// shortNameOfComponent возвращает 8.3-имя одного компонента пути (каталога или файла)
+// внутри dir через GetFileInformationByHandle — работает даже когда GetShortPathNameW для
+// всего длинного пути не справляется. Пустая строка — короткое имя недоступно.
+func shortNameOfComponent(dir, name string) string {
+	if dir == "" || name == "" || name == "." || name == ".." {
+		return ""
+	}
+	full := filepath.Join(dir, name)
+	if utf16Len(full) >= maxPathLegacy {
+		// CreateFile без префикса сам упрётся в MAX_PATH — открываем в расширенной форме.
+		full = toExtendedPath(full)
+	}
+	p, err := syscall.UTF16PtrFromString(full)
+	if err != nil {
+		return ""
+	}
+	h, err := syscall.CreateFile(p,
+		windowsFileReadAttributes,
+		windowsFileShareAll,
+		nil,
+		syscall.OPEN_EXISTING,
+		windowsFileFlagBackupSemantics,
+		0)
+	if err != nil {
+		return ""
+	}
+	defer syscall.CloseHandle(h)
+
+	var info byHandleInfo
+	ret, _, _ := procGetFileInformationByHandle.Call(
+		uintptr(h),
+		uintptr(unsafe.Pointer(&info)),
+	)
+	if ret == 0 {
+		return ""
+	}
+	short := syscall.UTF16ToString(info.CFileName[:])
+	if short == "" || strings.EqualFold(short, name) {
+		return "" // короткая форма совпадает с длинной — сокращения нет
+	}
+	return short
+}
+
+// shortenTail заменяет хвост пути из tailComponents последних компонентов их 8.3-именами.
+// Возвращает новый путь или "" (если заменить весь хвост не удалось). Обычно достаточно
+// одного самого длинного имени файла — поэтому начинаем с хвоста.
+func shortenTail(path string, tailComponents int) string {
+	if tailComponents <= 0 {
+		return ""
+	}
+	sep := string(filepath.Separator)
+	vol := filepath.VolumeName(path)
+	rest := strings.TrimPrefix(strings.TrimPrefix(path, vol), sep)
+	if rest == "" {
+		return ""
+	}
+	parts := strings.Split(rest, sep)
+	dir := vol
+	taken := 0
+	for i := len(parts) - 1; i >= 0 && taken < tailComponents; i-- {
+		sn := shortNameOfComponent(dir, parts[i])
+		if sn == "" {
+			return ""
+		}
+		parts[i] = sn
+		taken++
+		if i > 0 {
+			dir = vol + sep + strings.Join(parts[:i], sep)
+		}
+	}
+	return vol + sep + strings.Join(parts, sep)
+}
+
 // existsOnDisk проверяет доступность пути (учитывает формы с префиксом \\?\).
 func existsOnDisk(p string) bool {
 	_, err := os.Stat(p)
@@ -89,11 +194,17 @@ func existsOnDisk(p string) bool {
 }
 
 // pathVariants перечисляет формы пути, которые стоит попробовать в ShellExecuteW:
-// исходную, 8.3-имя и расширенную \\?\. Для коротких путей — только исходную.
+// исходную, варианты с 8.3-именами хвоста (1..3 последних компонента), полное 8.3-имя и
+// расширенную форму \\?\. Для коротких путей — только исходную.
 func pathVariants(p string) []string {
 	variants := []string{p}
 	if utf16Len(p) <= maxPathLegacy {
 		return variants
+	}
+	for _, n := range []int{1, 2, 3} {
+		if s := shortenTail(p, n); s != "" && s != p && utf16Len(s) <= maxPathLegacy {
+			variants = append(variants, s)
+		}
 	}
 	if s := shortPath(p); s != "" && s != p {
 		variants = append(variants, s)
@@ -102,6 +213,24 @@ func pathVariants(p string) []string {
 		variants = append(variants, e)
 	}
 	return variants
+}
+
+// pickShortVariant выбирает форму пути для прямого запуска плеера: 8.3-хвост (надёжно
+// работает даже с приложениями без поддержки длинных путей), затем полное 8.3-имя,
+// затем \\?\, иначе исходную.
+func pickShortVariant(p string) string {
+	if utf16Len(p) <= maxPathLegacy {
+		return p
+	}
+	for _, n := range []int{1, 2, 3} {
+		if s := shortenTail(p, n); s != "" && utf16Len(s) <= maxPathLegacy {
+			return s
+		}
+	}
+	if s := shortPath(p); s != "" {
+		return s
+	}
+	return toExtendedPath(p)
 }
 
 // utf16Len — длина строки в UTF-16 (именно её ограничивает MAX_PATH).
@@ -164,18 +293,6 @@ func openWithFallback(path string) error {
 		}
 	}
 	return err
-}
-
-// pickShortVariant выбирает форму пути, которую примет приложение без поддержки
-// длинных путей: 8.3-имя либо \\?\; при неудаче — исходный путь.
-func pickShortVariant(p string) string {
-	if utf16Len(p) <= maxPathLegacy {
-		return p
-	}
-	if s := shortPath(p); s != "" {
-		return s
-	}
-	return toExtendedPath(p)
 }
 
 // knownPlayers — видеоплееры, которые умеем запускать напрямую, если ассоциация Windows
