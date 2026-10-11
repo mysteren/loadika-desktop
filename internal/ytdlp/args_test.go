@@ -30,7 +30,7 @@ func TestBuildArgsMinimal(t *testing.T) {
 	if args[len(args)-1] != "https://example.com/v" {
 		t.Errorf("последний аргумент = %q, want URL", args[len(args)-1])
 	}
-	for _, flag := range []string{"--newline", "--no-color", "--progress-template"} {
+	for _, flag := range []string{"--newline", "--no-color", "--progress-template", "--restrict-filenames"} {
 		if !hasFlag(args, flag) {
 			t.Errorf("нет флага %q", flag)
 		}

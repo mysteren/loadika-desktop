@@ -35,6 +35,13 @@ const filePrintTemplate = "after_move:" + filePrefix + "%(filepath)s"
 // понятную ошибку (а не бесконечное ожидание).
 const socketTimeout = "30"
 
+// restrictFilenames — аргумент yt-dlp: в имени файла остаются только ASCII-символы, пробелы
+// заменяются подчёркиваниями. Кириллические/иные не-ASCII имена торрентов легко выводят путь за
+// MAX_PATH (260 символов) — Windows тогда отказывает открыть файл (ShellExecuteW код 2), даже
+// если он скачан. С этим флагом имена получаются короткими и латиницей; метаданные (заголовок
+// страницы) в интерфейсе при этом остаются оригинальными — они читаются из JSON отдельно.
+const restrictFilenames = "--restrict-filenames"
+
 // Options — параметры одиночной загрузки.
 type Options struct {
 	URL            string // ссылка
@@ -82,6 +89,7 @@ func BuildArgs(o Options) ([]string, error) {
 		"--newline",                       // прогресс — отдельной строкой
 		"--no-color",                      // без ANSI-цветов
 		"--socket-timeout", socketTimeout, // зависшее соединение прерывается раньше
+		restrictFilenames,                 // короткие ASCII-имена файлов (см. выше)
 		// --print включает --quiet, который глушит прогресс; --progress возвращает его.
 		"--progress",
 		"--progress-template", progressTemplate,

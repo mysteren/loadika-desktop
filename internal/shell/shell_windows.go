@@ -4,6 +4,7 @@ package shell
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -107,14 +108,21 @@ func isDir(p string) bool {
 
 func reveal(path string) error {
 	// explorer /select,"<path>" — открыть папку и выделить файл; путь в кавычках (пробелы).
-	// Для длинных путей (>260 символов) old-style explorer не принимает обычный путь —
-	// передаём 8.3-имя, а если его нет — форму с префиксом \\?\.
-	sel := path
-	if utf16Len(path) > maxPathLegacy {
-		sel = toExtendedPath(path)
-		if s := shortPath(path); s != "" {
-			sel = s // 8.3 надёжнее: explorer понимает \\?\ не во всех версиях Windows
-		}
+	// ВАЖНО: если путь не разобрался, explorer молча открывает «Этот компьютер» (диски) без
+	// ошибки — поэтому для путей длиннее 260 символов сначала подбираем разборную форму
+	// (8.3-хвост последних компонентов, затем \\?\), а если короткой формы нет — открываем
+	// хотя бы содержащий каталог (обычные папки редко бывают длиннее 260 символов).
+	if utf16Len(path) <= maxPathLegacy {
+		return shellExecute("open", "explorer.exe", `/select,"`+path+`"`)
 	}
-	return shellExecute("open", "explorer.exe", `/select,"`+sel+`"`)
+	sel := pickShortVariant(path)
+	if utf16Len(sel) <= maxPathLegacy && existsOnDisk(sel) {
+		return shellExecute("open", "explorer.exe", `/select,"`+sel+`"`)
+	}
+	// Выделение недоступного пути explorer проигнорирует — выделять нечего, открываем папку.
+	dir := filepath.Dir(path)
+	if d := pickShortVariant(dir); utf16Len(d) < utf16Len(dir) {
+		dir = d
+	}
+	return shellExecute("open", dir, "")
 }

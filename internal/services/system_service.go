@@ -2,9 +2,12 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"loadika-desktop/internal/paths"
 	"loadika-desktop/internal/shell"
 )
 
@@ -30,6 +33,25 @@ func (s *SystemService) RevealPath(path string) error {
 		return errors.New("не задан путь")
 	}
 	return shell.Reveal(path)
+}
+
+// OpenDownloadsDir открывает папку загрузок в проводнике. Принимает пустой путь: если UI не
+// передал папку (или она недоступна), раскрываем «Показать в папке» сам — иначе кнопка молча
+// отправляла пустоту и Windows открывала корневой вид («Этот компьютер» с дисками).
+func (s *SystemService) OpenDownloadsDir(dir string) error {
+	if dir != "" {
+		if _, err := os.Stat(dir); err == nil {
+			return shell.Open(dir)
+		}
+	}
+	fallback, ferr := paths.DefaultDownloadsDir()
+	if ferr != nil {
+		return fmt.Errorf("папка загрузок недоступна (%q): %w", dir, ferr)
+	}
+	if err := os.MkdirAll(fallback, 0o755); err != nil {
+		return fmt.Errorf("создать папку загрузок %q: %w", fallback, err)
+	}
+	return shell.Open(fallback)
 }
 
 // CopyText помещает текст в системный буфер обмена (для кнопки «Копировать»).
