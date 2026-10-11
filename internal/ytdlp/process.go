@@ -220,8 +220,7 @@ func newCommand(ctx context.Context, bin string, args []string) *exec.Cmd {
 }
 
 // scanOutput читает stdout построчно, передавая разобранный прогресс и итоговые пути файлов.
-// Каждая строка также уходит в h.Witness (менеджер задач использует это как «свидетельство»,
-// что процесс реально работал). Остальные строки (не прогресс) при наличии h.Log пишутся в лог.
+// Остальные строки (не прогресс) при наличии h.Log пишутся в лог для диагностики.
 func scanOutput(r io.Reader, h Handlers) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineBytes)

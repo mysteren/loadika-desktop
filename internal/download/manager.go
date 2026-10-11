@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -140,6 +141,11 @@ type entry struct {
 	cancel   context.CancelFunc
 	pauseReq bool      // для запущенной задачи: запрошена пауза (а не отмена)
 	logs     []LogLine // журнал событий задачи
+
+	// pid запущенного процесса yt-dlp текущей попытки; 0 — процесса нет. Нужен, чтобы на Windows
+	// отличить ложную «отмену контекста» (сигнал консоли помечает ctx отменённым, но процесс
+	// продолжает качать) от реальной остановки: перед сменой статуса сверяем живость по PID.
+	pid int
 
 	// Задание для планировщика (запускается, когда освободится слот).
 	bin        string
@@ -635,6 +641,19 @@ func (m *Manager) runEntry(ctx context.Context, id string, e *entry) {
 		errMsg = ""
 	}
 
+	// Ложная «отмена» на Windows: контекст помечен отменённым (например, Ctrl+C/Ctrl+Break в
+	// родительской консоли доставляется всем процессам), но процесс yt-dlp жив и продолжает качать.
+	// Не даём такой задаче уйти в canceled/paused/failed с работающим процессом.
+	if !paused && (state == StateCanceled || state == StateFailed) && ctx.Err() != nil && m.processAlive(id) {
+		m.addLog(id, LogWarn, "Ложная остановка процесса — загрузка продолжается", e.onLog)
+		m.mu.Lock()
+		if ee := m.tasks[id]; ee != nil && ee.task.State == StateRunning {
+			ee.task.Error = ""
+		}
+		m.mu.Unlock()
+		return
+	}
+
 	final := m.finish(id, state, errMsg)
 
 	// Итоговая запись журнала (детали попыток пишет attempt).
@@ -753,7 +772,12 @@ func (m *Manager) attempt(ctx context.Context, id, bin string, opts ytdlp.Option
 		}
 
 		start := time.Now()
+		// Публикуем PID процесса в задаче: менеджер по нему проверяет живость загрузки,
+		// чтобы отличить ложную «отмену контекста» на Windows от реальной остановки.
+		var curCmd *exec.Cmd
+		attemptHandlers.Cmd = &curCmd
 		runErr := m.run(attemptCtx, bin, args, attemptHandlers)
+		m.setProcPID(id, procPID(curCmd))
 		stopWatch()
 		wasSlow := errors.Is(context.Cause(attemptCtx), errTooSlow)
 		cancelAttempt(nil)
@@ -960,6 +984,38 @@ func (m *Manager) setFilePath(id, path string) {
 	if e := m.tasks[id]; e != nil {
 		e.task.FilePath = path
 	}
+}
+
+// setProcPID запоминает PID процесса текущей попытки загрузки (0 — процесс завершился или
+// не запускался). Вызывается из attempt сразу после возврата m.run.
+func (m *Manager) setProcPID(id string, pid int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if e := m.tasks[id]; e != nil {
+		e.pid = pid
+	}
+}
+
+// processAlive сообщает, жив ли ещё процесс yt-dlp этой задачи. Используется, чтобы на Windows
+// не принимать ложную «отмену контекста» за реальную остановку: если процесс качает — задача
+// остаётся в состоянии running.
+func (m *Manager) processAlive(id string) bool {
+	m.mu.Lock()
+	pid := 0
+	if e := m.tasks[id]; e != nil {
+		pid = e.pid
+	}
+	m.mu.Unlock()
+	return pid > 0 && procAlive(pid)
+}
+
+// procPID возвращает PID процесса cmd (0 — процесс не публиковался/завершён без состояния).
+func procPID(cmd *exec.Cmd) int {
+	if cmd == nil || cmd.Process == nil {
+		return 0
+	}
+	return cmd.Process.Pid
 }
 
 // finish фиксирует итоговое состояние задачи и освобождает отмену.
