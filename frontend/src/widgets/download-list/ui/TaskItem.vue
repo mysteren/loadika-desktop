@@ -10,7 +10,7 @@ import {
   taskStateLabel,
   useDownloadTaskStore,
 } from "@/entities/download-task";
-import type { Task, TaskLogLine } from "@/shared/api";
+import type { Task } from "@/shared/api";
 import { copyText, openPath, revealPath } from "@/shared/api";
 import { toMessage } from "@/shared/lib/error";
 import { formatBytes, formatClock, formatTimestamp } from "@/shared/lib/format";
@@ -29,10 +29,9 @@ const queued = computed(() => props.task.state === TASK_STATES.queued);
 const paused = computed(() => props.task.state === TASK_STATES.paused);
 const finished = computed(() => isFinished(props.task));
 
-// Строки журнала задачи (реактивно — journals из стора).
-function journalLines(): TaskLogLine[] {
-  return store.journalFor(props.task.id);
-}
+// Строки журнала задачи (реактивно — journals из стора). computed — чтобы не пересобирать
+// список на каждый ре-рендер (прогресс обновляется часто).
+const journalLines = computed(() => store.journalFor(props.task.id));
 
 // Текст прогресса: «скачано / всего» либо только скачано, если размер неизвестен.
 function progressText(): string {
@@ -95,14 +94,14 @@ async function reveal(path: string): Promise<void> {
 // При первом раскрытии журнала подтягиваем его с бэкенда, если в памяти пусто.
 function onJournalToggle(event: Event): void {
   const details = event.target as HTMLDetailsElement | null;
-  if (details?.open === true && journalLines().length === 0) {
+  if (details?.open === true && journalLines.value.length === 0) {
     void store.loadJournal(props.task.id);
   }
 }
 
 // Текст журнала для копирования (с полными датой и временем).
 function journalText(): string {
-  return journalLines()
+  return journalLines.value
     .map((line) => `[${formatTimestamp(line.time)}] ${line.level}: ${line.message}`)
     .join("\n");
 }
@@ -187,17 +186,17 @@ async function copyJournal(): Promise<void> {
 
     <!-- Журнал загрузки: подробные события (попытки/прокси/ошибки); открывается в любой момент. -->
     <details class="task__journal" @toggle="onJournalToggle">
-      <summary class="task__journal-title">Журнал загрузки ({{ journalLines().length }})</summary>
+      <summary class="task__journal-title">Журнал загрузки ({{ journalLines.length }})</summary>
       <div class="task__journal-body">
         <div class="task__journal-actions">
-          <AppButton variant="secondary" :disabled="journalLines().length === 0" @click="copyJournal">
+          <AppButton variant="secondary" :disabled="journalLines.length === 0" @click="copyJournal">
             {{ copiedId === task.id ? "Скопировано" : "Копировать" }}
           </AppButton>
         </div>
-        <p v-if="journalLines().length === 0" class="task__journal-empty">Пока пусто.</p>
+        <p v-if="journalLines.length === 0" class="task__journal-empty">Пока пусто.</p>
         <ul v-else class="task__journal-list">
           <li
-            v-for="(line, index) in journalLines()"
+            v-for="(line, index) in journalLines"
             :key="index"
             class="task__log-line"
             :class="`task__log-line--${line.level}`"

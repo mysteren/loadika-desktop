@@ -68,17 +68,15 @@ func Run(ctx context.Context, bin string, args []string, h Handlers) error {
 	waitErr := cmd.Wait()
 	ctxErr := ctx.Err()
 
-	// Процесс остановлен нами (пауза/отмена): контекст отменён и процесс завершён сигналом или
-	// кодом STATUS_CONTROL_C_EXIT. Сообщаем context.Canceled — менеджер различает паузу/отмену сам.
-	if stopErr := stopError(cmd, ctxErr, waitErr); stopErr != nil {
-		return stopErr
-	}
-	// Контекст «отменён», но процесс завершился сам по обычному коду возврата — отмена на него
-	// не повлияла (ложная отмена: Ctrl+C/Ctrl+Break доставляется всем процессам одной консоли,
-	// поэтому на Windows ctx может быть помечен отменённым ещё до нашей остановки). Решаем по
-	// фактическому результату процесса ниже.
+	// Таймаут (не наша остановка) — отдельное понятное сообщение.
 	if ctxErr != nil && errors.Is(ctxErr, context.DeadlineExceeded) {
 		return interruptError(stderr.String(), ctxErr)
+	}
+	// Процесс остановлен нами (пауза/отмена): контекст отменён, и процесс не завершился штатно —
+	// либо вышел нештатно, либо чтение вывода прервалось (см. stopError). Сообщаем
+	// context.Canceled — менеджер различает паузу/отмену сам.
+	if stopErr := stopError(ctxErr, waitErr, scanErr); stopErr != nil {
+		return stopErr
 	}
 	if scanErr != nil {
 		return fmt.Errorf("yt-dlp: чтение вывода: %w", scanErr)
@@ -128,31 +126,32 @@ func interruptError(stderr string, ctxErr error) error {
 }
 
 // errStoppedByUs — ошибка «процесс остановлен нами» (пауза/отмена), распознаётся менеджером
-// задач через errors.Is(context.Canceled). На Windows убитый TerminateProcess/Ctrl+C процесс
-// yt-dlp завершается кодом STATUS_CONTROL_C_EXIT; Go может расценить такой выход как штатный
-// (nil из Wait) — тогда задача получила бы ложный статус (например, completed сразу после
-// паузы). Поэтому такой выход мы явно подменяем этой ошибкой.
+// задач через errors.Is(context.Canceled). На Windows наш Cancel вызывает os.Process.Kill
+// (TerminateProcess с кодом 1), а Ctrl+C/Ctrl+Break в общей консоли — код STATUS_CONTROL_C_EXIT;
+// в обоих случаях процесс завершается нештатно, но Go может расценить выход как штатный (nil из
+// Wait) — тогда задача получила бы ложный статус (например, completed сразу после паузы).
+// Поэтому такой выход мы явно подменяем этой ошибкой.
 var errStoppedByUs = fmt.Errorf("yt-dlp: остановлен (пауза/отмена): %w", context.Canceled)
 
 // controlCExitStatus — код выхода STATUS_CONTROL_C_EXIT (0xC000013A): консольное приложение
-// Windows, завершённое по Ctrl+C/Ctrl+Break или TerminateProcess.
+// Windows, завершённое по Ctrl+C/Ctrl+Break.
 const controlCExitStatus = 3221225786
 
-// stopError возвращает errStoppedByUs, если ненулевой выход процесса вызван нашей остановкой:
-// контекст отменён И процесс либо завершён сигналом (SIGINT/SIGTERM/Kill), либо вышел с кодом
-// STATUS_CONTROL_C_EXIT. Иначе — nil (решать по обычной ошибке выхода).
-func stopError(cmd *exec.Cmd, ctxErr error, waitErr error) error {
-	if ctxErr == nil || waitErr == nil {
+// stopError возвращает errStoppedByUs, если процесс остановлен нами (пауза/отмена): контекст
+// отменён И процесс не завершился штатно. Нештатный выход — это либо ненулевой код возврата
+// (waitErr != nil; os.Process.Kill на Windows даёт код 1, не STATUS_CONTROL_C_EXIT), либо ошибка
+// чтения вывода (scanErr != nil): при WaitDelay watchCtx закрывает читающий конец пайпа, и
+// сканер возвращает «read |0: file already closed». Если контекст отменён, но процесс завершился
+// сам и вывод прочитан целиком (ложная отмена: Ctrl+C/Ctrl+Break в общей консоли помечает ctx
+// отменённым, пока yt-dlp качает) — возвращаем nil: результат решается по обычному коду выхода.
+func stopError(ctxErr, waitErr, scanErr error) error {
+	if ctxErr == nil {
 		return nil
 	}
-	ps := cmd.ProcessState
-	if ps == nil {
-		return errStoppedByUs // процесс убит, состояния выхода нет
+	if waitErr == nil && scanErr == nil {
+		return nil
 	}
-	if !ps.Exited() || ps.ExitCode() == controlCExitStatus {
-		return errStoppedByUs
-	}
-	return nil
+	return errStoppedByUs
 }
 
 // fixStopError приводит ошибку завершения cmd к errStoppedByUs, если это была наша остановка,

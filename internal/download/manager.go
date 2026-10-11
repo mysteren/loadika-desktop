@@ -287,6 +287,13 @@ func (m *Manager) Start(req Request, onProgress func(Progress), onState func(Tas
 		onState(task)
 	}
 	m.schedule()
+	// Возвращаем АКТУАЛЬНЫЙ снимок: если для задачи освободился слот, schedule уже перевёл её в
+	// running. Иначе клиент получил бы устаревший queued и «застыл» на нём: событие task:state
+	// (running) может быть доставлено в вебвью раньше ответа Create и потеряно (задачи ещё нет в
+	// сторе), а повторного события до смены состояния не будет.
+	if current, ok := m.Get(task.ID); ok {
+		return current, nil
+	}
 	return task, nil
 }
 

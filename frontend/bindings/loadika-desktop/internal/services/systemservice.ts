@@ -18,6 +18,15 @@ export function CopyText(text: string): $CancellablePromise<void> {
 }
 
 /**
+ * OpenDownloadsDir открывает папку загрузок в проводнике. Принимает пустой путь: если UI не
+ * передал папку (или она недоступна), раскрываем «Показать в папке» сам — иначе кнопка молча
+ * отправляла пустоту и Windows открывала корневой вид («Этот компьютер» с дисками).
+ */
+export function OpenDownloadsDir(dir: string): $CancellablePromise<void> {
+    return $Call.ByID(2527959788, dir);
+}
+
+/**
  * OpenPath открывает файл или каталог приложением по умолчанию.
  */
 export function OpenPath(path: string): $CancellablePromise<void> {

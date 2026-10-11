@@ -41,7 +41,8 @@ function plural(count: number, one: string, many: string): string {
 }
 
 // Сводка состояний для шапки: «1 загружается · 2 в очереди · 1 на паузе».
-function summary(): string {
+// computed — чтобы не пересчитывать строку на каждый ре-рендер от событий прогресса.
+const summary = computed(() => {
   const parts: string[] = [];
   if (runningCount.value > 0) {
     parts.push(`${runningCount.value} ${plural(runningCount.value, "загружается", "загружаются")}`);
@@ -53,14 +54,14 @@ function summary(): string {
     parts.push(`${pausedCount.value} на паузе`);
   }
   return parts.length > 0 ? parts.join(" · ") : "нет активных загрузок";
-}
+});
 </script>
 
 <template>
   <div class="downloads">
     <div class="downloads__header">
       <h2 class="downloads__title">Задачи</h2>
-      <span class="downloads__count">{{ summary() }}</span>
+      <span class="downloads__count">{{ summary }}</span>
       <AppButton variant="secondary" @click="nav.navigate('history')">Видео</AppButton>
     </div>
 

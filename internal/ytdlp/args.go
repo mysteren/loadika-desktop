@@ -89,7 +89,7 @@ func BuildArgs(o Options) ([]string, error) {
 		"--newline",                       // прогресс — отдельной строкой
 		"--no-color",                      // без ANSI-цветов
 		"--socket-timeout", socketTimeout, // зависшее соединение прерывается раньше
-		restrictFilenames,                 // короткие ASCII-имена файлов (см. выше)
+		restrictFilenames, // короткие ASCII-имена файлов (см. выше)
 		// --print включает --quiet, который глушит прогресс; --progress возвращает его.
 		"--progress",
 		"--progress-template", progressTemplate,
