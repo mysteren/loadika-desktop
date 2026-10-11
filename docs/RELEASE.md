@@ -21,6 +21,18 @@ Workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) з�
 После успешной сборки job `release` скачивает артефакты и создаёт GitHub Release с заметками
 (`softprops/action-gh-release`, `generate_release_notes: true`).
 
+## Требования к системе
+
+- **AppImage** (Linux) собирается на **системных** библиотеках: нужны **GTK4 + WebKitGTK 6.0** —
+  Debian 13+, Ubuntu 24.04+, Linux Mint 22+, LMDE 7, Fedora 39+, Arch/Manjaro, openSUSE Tumbleweed.
+  На более старых системах (Debian ≤ 12, Ubuntu ≤ 22.04) берите `deb`/`rpm` (или ставьте системные
+  библиотеки). Бандлинга GTK в AppImage нет — так убраны ошибки загрузки системных модулей из-за
+  рассинхрона версий.
+- **deb / rpm** — зависимости объявлены в пакете (`libgtk-4-1`, `libwebkitgtk-6.0-4`).
+- **Windows** — WebView2 (в Windows 10/11 обычно уже есть); портативный `.zip` не требует установки.
+- **macOS** — 12.0+ (universal-сборка: Intel и Apple Silicon).
+- Библиотеки `yt-dlp` / `deno` / `ffmpeg` в поставку не входят — устанавливаются в рантайме.
+
 ## Шаги релиза
 
 1. **Поднять версию** во всех местах (единый номер, например `0.2.0`):

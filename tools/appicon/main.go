@@ -37,6 +37,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "appicon:", err)
 		os.Exit(1)
 	}
+	// Рядом кладём уменьшенную копию 256×256: её требует linuxdeploy при сборке
+	// AppImage (принимает только иконки из фиксированного набора размеров).
+	if err := writeThumb(*out, 256); err != nil {
+		fmt.Fprintln(os.Stderr, "appicon:", err)
+		os.Exit(1)
+	}
 }
 
 func generate(in, out string, size int, bgHex, markHex string, scale float64) error {
@@ -74,6 +80,67 @@ func generate(in, out string, size int, bgHex, markHex string, scale float64) er
 		return err
 	}
 	return f.Close()
+}
+
+// writeThumb уменьшает иконку до size×size и сохраняет рядом с исходной
+// (имя вида <база>-<size>.png).
+func writeThumb(src string, size int) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	img, err := png.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		return err
+	}
+
+	dst := strings.TrimSuffix(src, ".png") + fmt.Sprintf("-%d.png", size)
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if err := png.Encode(out, downscale(img, size)); err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+// downscale уменьшает изображение до size×size усреднением блоков (box filter).
+func downscale(src image.Image, size int) *image.RGBA {
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, size, size))
+	for y := 0; y < size; y++ {
+		y0 := b.Min.Y + y*h/size
+		y1 := b.Min.Y + (y+1)*h/size
+		for x := 0; x < size; x++ {
+			x0 := b.Min.X + x*w/size
+			x1 := b.Min.X + (x+1)*w/size
+			var sr, sg, sb, sa, n uint64
+			for yy := y0; yy < y1; yy++ {
+				for xx := x0; xx < x1; xx++ {
+					r, g, bl, a := src.At(xx, yy).RGBA()
+					sr += uint64(r)
+					sg += uint64(g)
+					sb += uint64(bl)
+					sa += uint64(a)
+					n++
+				}
+			}
+			if n == 0 {
+				n = 1
+			}
+			dst.SetRGBA(x, y, color.RGBA{
+				R: uint8(sr / n >> 8),
+				G: uint8(sg / n >> 8),
+				B: uint8(sb / n >> 8),
+				A: uint8(sa / n >> 8),
+			})
+		}
+	}
+	return dst
 }
 
 // parseViewBox достаёт размеры из атрибута viewBox (или значения по умолчанию).

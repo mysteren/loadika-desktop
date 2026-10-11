@@ -127,6 +127,8 @@ wails3 dev
 - `tools/appicon/` — отдельный Go-модуль-генератор `appicon.png` из логотипа (не тянет зависимости
   в основной модуль; `-scale` по умолчанию 0.9 — под квадратный viewBox нового знака).
   Запуск: `cd tools/appicon && go run . -in ../../frontend/public/logo.svg -out ../../build/appicon.png`.
+  Рядом с `appicon.png` кладётся уменьшенная копия `appicon-256.png` — её требует linuxdeploy
+  при сборке AppImage (принимает только иконки из фиксированного набора размеров).
 - `build/appicon.icon/` — исходник иконки macOS 26 (Icon Composer): `Assets/loadika_logo.svg`
   (копия логотипа) + `icon.json` (фон — брендовый `#9b5aa8`, знак — белый). `build/darwin/Assets.car`
   собирается из него **только на macOS** (`wails3 generate icons -iconcomposerinput`); на Linux
@@ -136,6 +138,7 @@ wails3 dev
 
 **Релиз / CI:**
 - `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/RELEASE.md`.
+  AppImage собирается через `linuxdeploy` **без бандлинга** библиотек (системные GTK4/WebKitGTK 6.0) — см. `docs/BUILD.md`.
 - `LICENSE` — MIT; та же лицензия в `build/linux/nfpm/nfpm.yaml`.
 - Версия (0.1.0) живёт в `internal/version/version.go`, `build/config.yml`,
   `build/windows/info.json`, `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.

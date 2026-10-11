@@ -12,9 +12,10 @@
 
 Готовые сборки — в [Releases](https://github.com/mysteren/loadika-desktop/releases):
 
-- **Linux** — `.deb`, `.rpm`, `.AppImage`, `.pkg.tar.zst` (Arch);
-- **Windows** — установщик NSIS (`.exe`);
-- **macOS** — `.dmg`.
+- **Linux** — `.deb`, `.rpm`, `.pkg.tar.zst` (Arch) и `.AppImage` (AppImage использует системные
+  GTK4 + WebKitGTK 6.0 — Debian 13+, Ubuntu 24.04+, Fedora 39+, Arch/Manjaro, openSUSE Tumbleweed);
+- **Windows** — портативный `.zip` и установщик NSIS (`.exe`);
+- **macOS** — `.dmg` (universal: Intel + Apple Silicon).
 
 Библиотеки `yt-dlp`, `deno` и `ffmpeg` в поставку не входят — приложение устанавливает их при
 первом запуске («Настройки → Зависимости»). Подробности — в справке внутри приложения.

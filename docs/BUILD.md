@@ -146,16 +146,28 @@ wails3 task linux:install:user:desktop
 > с `-tags gtk3` (устаревший WebKit2GTK-4.1) работал бы и `gtk_window_set_icon` из `Options.Icon`,
 > но по умолчанию используется GTK4, поэтому связка идёт через `.desktop`.
 
-## AppImage и внешние инструменты
+## AppImage: системные GTK4/WebKitGTK (без бандлинга)
 
-AppImage (linuxdeploy) выставляет окружение для бандла GTK/WebKit, в т.ч. `PYTHONHOME=$APPDIR/usr`,
-`PYTHONPATH` и `LD_LIBRARY_PATH=$APPDIR/usr/lib`. Своему процессу они нужны, но сторонним
-инструментам вредят: с чужим `PYTHONHOME` системный Python (которым запускается `yt-dlp`) не находит
-стандартную библиотеку — «Fatal Python error: Failed to import encodings module».
+AppImage собирается через `linuxdeploy` **без плагина GTK** и с `--exclude-library='*'`: библиотеки
+в образ не пакуются — приложение использует **системные** GTK4 + WebKitGTK 6.0 + libsoup3.
 
-Поэтому при запуске `yt-dlp`/`ffmpeg`/`deno` окружение дочернего процесса очищается
-(`internal/procenv`: внутри AppImage, т.е. при заданном `APPDIR`, убираются
-`PYTHONHOME`/`PYTHONPATH`/`PYTHONSTARTUP`/`LD_LIBRARY_PATH`). Вне AppImage окружение не меняется.
+Почему так: при бандлинге GTK (плагин `linuxdeploy-plugin-gtk`) собранный на Ubuntu 24.04 GTK 4.14
+конфликтовал с системными модулями на более новых системах (GTK 4.18) — при запуске сыпались ошибки
+`Failed to load module ... undefined symbol ...` (не фатальные, но шумные). С системными библиотеками
+рассинхрона нет; образ к тому же сильно меньше.
+
+**Требования к системе для AppImage:** GTK4 + WebKitGTK 6.0 — Debian 13+, Ubuntu 24.04+, Linux Mint 22+,
+LMDE 7, Fedora 39+, Arch/Manjaro, openSUSE Tumbleweed. На старых системах (Debian ≤ 12,
+Ubuntu ≤ 22.04) WebKitGTK 6.0 нет — там используйте пакет `deb`/`rpm` или ставьте системные библиотеки.
+
+Иконку для AppImage linuxdeploy требует из фиксированного набора размеров — `tools/appicon` кладёт
+рядом с `appicon.png` уменьшенную копию `appicon-256.png`.
+
+### Чистое окружение для внешних инструментов
+
+Отдельно (на случай других способов упаковки/запуска) при запуске `yt-dlp`/`ffmpeg`/`deno` окружение
+дочернего процесса очищается (`internal/procenv`): внутри AppImage убираются `PYTHONHOME`/`PYTHONPATH`/
+`LD_LIBRARY_PATH`, которые ломали Python-`yt-dlp` («Failed to import encodings module»).
 
 ## Артефакты (каталог `bin/`)
 

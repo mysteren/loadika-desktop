@@ -64,7 +64,8 @@ jobs:
             libwebkitgtk-6.0-dev \
             libsoup-3.0-dev \
             build-essential \
-            pkg-config
+            pkg-config \
+            squashfs-tools
 
       # Windows: NSIS для установщика; кладём в PATH на случай, если choco-шим не подхватился.
       - name: Install NSIS (Windows)
