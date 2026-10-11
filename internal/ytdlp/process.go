@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"loadika-desktop/internal/procattr"
 	"loadika-desktop/internal/procenv"
 )
 
@@ -113,6 +114,8 @@ func newCommand(ctx context.Context, bin string, args []string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	// Чистое окружение: внутри AppImage AppRun задаёт PYTHONHOME и др., что ломает yt-dlp (Python).
 	cmd.Env = procenv.Env()
+	// На Windows — без окна терминала.
+	cmd.SysProcAttr = procattr.HideConsole()
 	cmd.Cancel = func() error {
 		if runtime.GOOS == "windows" {
 			return cmd.Process.Kill()

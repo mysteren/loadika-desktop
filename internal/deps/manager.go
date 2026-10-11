@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"loadika-desktop/internal/procattr"
 	"loadika-desktop/internal/procenv"
 )
 
@@ -276,6 +277,8 @@ func binaryVersion(s spec, path string) string {
 	cmd := exec.CommandContext(ctx, path, args...)
 	// Чистое окружение: внутри AppImage AppRun задаёт PYTHONHOME и др., что ломает Python-инструменты.
 	cmd.Env = procenv.Env()
+	// На Windows — без окна терминала.
+	cmd.SysProcAttr = procattr.HideConsole()
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
