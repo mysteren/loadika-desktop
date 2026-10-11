@@ -1,5 +1,8 @@
 # Loadika Desktop
 
+[![CI](https://github.com/mysteren/loadika-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/mysteren/loadika-desktop/actions/workflows/ci.yml)
+[![Release](https://github.com/mysteren/loadika-desktop/actions/workflows/release.yml/badge.svg)](https://github.com/mysteren/loadika-desktop/actions/workflows/release.yml)
+
 Кроссплатформенное (Linux / Windows / macOS) десктопное приложение — удобная обёртка над
 [`yt-dlp`](https://github.com/yt-dlp/yt-dlp): очередь загрузок с паузой/докачкой, пул прокси
 с автоматическим переключением, выбор качества по фактическим форматам, библиотека «Видео»,
