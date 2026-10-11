@@ -12,7 +12,6 @@ on:
 permissions:
   contents: write
 
-# Версия Wails CLI и системные зависимости для сборки — держим в одном месте.
 env:
   WAILS_VERSION: v3.0.0-beta.27
 
@@ -53,10 +52,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Wails v3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
-
       # Linux: стек GTK4 + WebKitGTK 6.0 (см. build/linux/nfpm/nfpm.yaml).
+      # Важно ДО `go install wails3`: CLI собирается с cgo и требует эти .pc-файлы.
       - name: Install Linux build dependencies
         if: matrix.platform == 'linux'
         run: |
@@ -68,18 +65,35 @@ jobs:
             build-essential \
             pkg-config
 
-      # Windows: NSIS — для установщика (create:nsis:installer).
+      # Windows: NSIS для установщика; кладём в PATH на случай, если choco-шим не подхватился.
       - name: Install NSIS (Windows)
         if: matrix.platform == 'windows'
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
+
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      # Сборка и упаковка платформы (артефакты — в bin/ и build/windows/nsis/).
-      - name: Build & package
-        run: wails3 task ${{ matrix.platform }}:package
+      - name: Build & package (Linux)
+        if: matrix.platform == 'linux'
+        run: wails3 task linux:package
+
+      - name: Build & package (Windows)
+        if: matrix.platform == 'windows'
+        run: wails3 task windows:package
+
+      # macOS: универсальный бинарник (Intel + Apple Silicon) и .dmg.
+      - name: Build & package (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          wails3 task darwin:package:universal
+          wails3 task darwin:create:dmg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
