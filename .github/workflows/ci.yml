@@ -44,6 +44,13 @@ jobs:
             exit 1
           fi
 
+      # main.go встраивает //go:embed all:frontend/dist (в git не хранится).
+      # Для проверки компиляции достаточно заглушки; реальную сборку dist проверяет job frontend.
+      - name: Stub frontend/dist (для go:embed)
+        run: |
+          mkdir -p frontend/dist
+          touch frontend/dist/index.html
+
       - name: Build
         run: go build . ./internal/...
 
