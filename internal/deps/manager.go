@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"loadika-desktop/internal/procenv"
 )
 
 // Manager управляет внешними зависимостями (yt-dlp, deno, ffmpeg).
@@ -271,7 +273,10 @@ func binaryVersion(s spec, path string) string {
 	if len(args) == 0 {
 		args = []string{"--version"}
 	}
-	out, err := exec.CommandContext(ctx, path, args...).Output()
+	cmd := exec.CommandContext(ctx, path, args...)
+	// Чистое окружение: внутри AppImage AppRun задаёт PYTHONHOME и др., что ломает Python-инструменты.
+	cmd.Env = procenv.Env()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}

@@ -146,6 +146,17 @@ wails3 task linux:install:user:desktop
 > с `-tags gtk3` (устаревший WebKit2GTK-4.1) работал бы и `gtk_window_set_icon` из `Options.Icon`,
 > но по умолчанию используется GTK4, поэтому связка идёт через `.desktop`.
 
+## AppImage и внешние инструменты
+
+AppImage (linuxdeploy) выставляет окружение для бандла GTK/WebKit, в т.ч. `PYTHONHOME=$APPDIR/usr`,
+`PYTHONPATH` и `LD_LIBRARY_PATH=$APPDIR/usr/lib`. Своему процессу они нужны, но сторонним
+инструментам вредят: с чужим `PYTHONHOME` системный Python (которым запускается `yt-dlp`) не находит
+стандартную библиотеку — «Fatal Python error: Failed to import encodings module».
+
+Поэтому при запуске `yt-dlp`/`ffmpeg`/`deno` окружение дочернего процесса очищается
+(`internal/procenv`: внутри AppImage, т.е. при заданном `APPDIR`, убираются
+`PYTHONHOME`/`PYTHONPATH`/`PYTHONSTARTUP`/`LD_LIBRARY_PATH`). Вне AppImage окружение не меняется.
+
 ## Артефакты (каталог `bin/`)
 
 - Linux: `bin/loadika-desktop`, а также пакеты из `linux:package` (AppImage/deb/rpm/AUR).

@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"loadika-desktop/internal/procenv"
 )
 
 // graceKill — сколько ждать мягкого завершения процесса после отмены контекста,
@@ -109,6 +111,8 @@ func interruptError(stderr string, ctxErr error) error {
 // не доставляются — там процесс завершается сразу.
 func newCommand(ctx context.Context, bin string, args []string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, bin, args...)
+	// Чистое окружение: внутри AppImage AppRun задаёт PYTHONHOME и др., что ломает yt-dlp (Python).
+	cmd.Env = procenv.Env()
 	cmd.Cancel = func() error {
 		if runtime.GOOS == "windows" {
 			return cmd.Process.Kill()
