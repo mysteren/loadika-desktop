@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <title>Loadika</title>
+    <script>
+      // Ранний выбор темы до загрузки приложения — убирает «вспышку» неверной темы.
+      (function () {
+        try {
+          var stored = localStorage.getItem("loadika.theme");
+          var resolved =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.dataset.theme = resolved;
+        } catch (ignored) {
+          /* при недоступности localStorage остаётся тема по умолчанию */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

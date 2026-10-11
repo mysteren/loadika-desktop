@@ -1,0 +1,75 @@
+/* Дизайн-токены — единственное место, где живут «магические» значения.
+   Компоненты обязаны использовать эти переменные, а не хардкодить цвета/отступы.
+   Тема управляется атрибутом <html data-theme="light|dark"> (см. shared/lib/theme.ts). */
+
+:root {
+  color-scheme: light;
+
+  /* Основной цвет (primary). */
+  --color-accent: #9b5aa8;
+  --color-accent-hover: #87489a;
+  --color-accent-contrast: #ffffff;
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --color-danger: #c2477a;
+  --color-success: #2f9e63;
+  --color-warning: #b0740f;
+
+  /* Нейтральные поверхности и текст — спокойные, без цветного уклона.
+     Цветовой характер интерфейсу задают primary и тени, а не фоны. */
+  --color-bg: #f6f5f7;
+  --color-bg-elevated: #ffffff;
+  --color-sidebar: #efedf1;
+  --color-border: #e3e1e6;
+  --color-text: #232025;
+  --color-text-muted: #6c6871;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Тени замешаны с primary: приглушённый фиолетово-серый оттенок вместо чистого чёрного. */
+  --shadow-hue: color-mix(in srgb, var(--color-accent) 35%, #2a2230);
+  --shadow-xs: 0 1px 2px color-mix(in srgb, var(--shadow-hue) 12%, transparent);
+  --shadow-sm:
+    0 2px 6px -2px color-mix(in srgb, var(--shadow-hue) 20%, transparent),
+    0 1px 2px color-mix(in srgb, var(--shadow-hue) 12%, transparent);
+  --shadow-md: 0 10px 24px -12px color-mix(in srgb, var(--shadow-hue) 28%, transparent);
+  --shadow-panel: 3px 0 10px -8px color-mix(in srgb, var(--shadow-hue) 40%, transparent);
+  --shadow-active: 0 6px 16px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+
+  --sidebar-width: 148px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-accent: #c68fd4;
+  --color-accent-hover: #d4a2e0;
+  --color-accent-contrast: #2a1033;
+  --color-danger: #e07aa0;
+  --color-success: #63c98a;
+  --color-warning: #e0b25c;
+
+  /* Нейтральные, почти без уклона. */
+  --color-bg: #17161a;
+  --color-bg-elevated: #201f24;
+  --color-sidebar: #1b1a1f;
+  --color-border: #2c2a31;
+  --color-text: #eceaef;
+  --color-text-muted: #a6a2ac;
+
+  /* Тени в тёмной теме — глубокие, с подмешанным primary. */
+  --shadow-hue: color-mix(in srgb, var(--color-accent) 40%, #050409);
+  --shadow-xs: 0 1px 2px color-mix(in srgb, var(--shadow-hue) 45%, transparent);
+  --shadow-sm: 0 2px 8px -2px color-mix(in srgb, var(--shadow-hue) 60%, transparent);
+  --shadow-md: 0 12px 28px -12px color-mix(in srgb, var(--shadow-hue) 70%, transparent);
+  --shadow-panel: 3px 0 12px -8px color-mix(in srgb, var(--shadow-hue) 85%, transparent);
+}

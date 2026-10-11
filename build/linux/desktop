@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A loadika-desktop application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/loadika-desktop %u
+Terminal=false
+Type=Application
+Icon=loadika-desktop
+Categories=Utility;
+StartupWMClass=loadika-desktop
+
+ 

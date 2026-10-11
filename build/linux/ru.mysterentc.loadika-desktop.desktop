@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=loadika-desktop
+Exec=loadika-desktop
+Icon=ru.mysterentc.loadika-desktop
+Categories=Development;
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false
