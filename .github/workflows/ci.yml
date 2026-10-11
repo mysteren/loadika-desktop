@@ -1,0 +1,78 @@
+name: CI
+
+# Быстрые проверки на каждый пуш в main и на pull request — чтобы ловить регрессии
+# до создания тега-релиза (см. release.yml).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Отменяем предыдущий прогон той же ветки/PR при новом пуше.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # cgo-часть Wails (internal/app → wails application) требует GTK4 + WebKitGTK.
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libwebkitgtk-6.0-dev \
+            libsoup-3.0-dev \
+            build-essential \
+            pkg-config
+
+      - name: Check formatting (gofmt)
+        run: |
+          unformatted="$(gofmt -l internal)"
+          if [ -n "$unformatted" ]; then
+            echo "Эти файлы не отформатированы (gofmt -l internal):"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build . ./internal/...
+
+      - name: Vet
+        run: go vet . ./internal/...
+
+      - name: Test
+        run: go test ./internal/...
+
+  frontend:
+    name: Frontend (Vue/TS)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
