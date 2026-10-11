@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"loadika-desktop/internal/procattr"
@@ -31,6 +33,9 @@ type Handlers struct {
 	Progress func(Progress)    // строки прогресса
 	File     func(path string) // итоговый путь файла (after_move)
 	Log      io.Writer         // полный вывод процесса (кроме строк прогресса) для диагностики
+	Cmd      **exec.Cmd        // сюда публикуется запущенный процесс сразу после Start — вызывающий
+	// может проверить его живость (ytdlp.Alive), чтобы отличить ложную «отмену контекста» на
+	// Windows от реальной остановки загрузки.
 }
 
 // Run запускает yt-dlp с готовыми аргументами и построчно читает его stdout. Разобранный
@@ -55,12 +60,24 @@ func Run(ctx context.Context, bin string, args []string, h Handlers) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("yt-dlp: запуск %q: %w", bin, err)
 	}
+	if h.Cmd != nil {
+		*h.Cmd = cmd
+	}
 
 	scanErr := scanOutput(stdout, h)
 	waitErr := cmd.Wait()
+	ctxErr := ctx.Err()
 
-	// Отмену/таймаут контекста сообщаем отдельно и понятно; вызывающий различает её через errors.Is.
-	if ctxErr := ctx.Err(); ctxErr != nil {
+	// Процесс остановлен нами (пауза/отмена): контекст отменён и процесс завершён сигналом или
+	// кодом STATUS_CONTROL_C_EXIT. Сообщаем context.Canceled — менеджер различает паузу/отмену сам.
+	if stopErr := stopError(cmd, ctxErr, waitErr); stopErr != nil {
+		return stopErr
+	}
+	// Контекст «отменён», но процесс завершился сам по обычному коду возврата — отмена на него
+	// не повлияла (ложная отмена: Ctrl+C/Ctrl+Break доставляется всем процессам одной консоли,
+	// поэтому на Windows ctx может быть помечен отменённым ещё до нашей остановки). Решаем по
+	// фактическому результату процесса ниже.
+	if ctxErr != nil && errors.Is(ctxErr, context.DeadlineExceeded) {
 		return interruptError(stderr.String(), ctxErr)
 	}
 	if scanErr != nil {
@@ -88,7 +105,11 @@ func RunInfo(ctx context.Context, bin string, args []string) ([]byte, string, er
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if stopErr := fixStopError(ctx, cmd, err); stopErr != nil {
+		return stdout.Bytes(), stderr.String(), stopErr
+	}
+	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return stdout.Bytes(), stderr.String(), interruptError(stderr.String(), ctxErr)
 		}
@@ -104,6 +125,78 @@ func interruptError(stderr string, ctxErr error) error {
 		return fmt.Errorf("yt-dlp: превышено время ожидания: %w%s", ctxErr, stderrSuffix(stderr))
 	}
 	return fmt.Errorf("yt-dlp: прерван: %w%s", ctxErr, stderrSuffix(stderr))
+}
+
+// errStoppedByUs — ошибка «процесс остановлен нами» (пауза/отмена), распознаётся менеджером
+// задач через errors.Is(context.Canceled). На Windows убитый TerminateProcess/Ctrl+C процесс
+// yt-dlp завершается кодом STATUS_CONTROL_C_EXIT; Go может расценить такой выход как штатный
+// (nil из Wait) — тогда задача получила бы ложный статус (например, completed сразу после
+// паузы). Поэтому такой выход мы явно подменяем этой ошибкой.
+var errStoppedByUs = fmt.Errorf("yt-dlp: остановлен (пауза/отмена): %w", context.Canceled)
+
+// controlCExitStatus — код выхода STATUS_CONTROL_C_EXIT (0xC000013A): консольное приложение
+// Windows, завершённое по Ctrl+C/Ctrl+Break или TerminateProcess.
+const controlCExitStatus = 3221225786
+
+// stopError возвращает errStoppedByUs, если ненулевой выход процесса вызван нашей остановкой:
+// контекст отменён И процесс либо завершён сигналом (SIGINT/SIGTERM/Kill), либо вышел с кодом
+// STATUS_CONTROL_C_EXIT. Иначе — nil (решать по обычной ошибке выхода).
+func stopError(cmd *exec.Cmd, ctxErr error, waitErr error) error {
+	if ctxErr == nil || waitErr == nil {
+		return nil
+	}
+	ps := cmd.ProcessState
+	if ps == nil {
+		return errStoppedByUs // процесс убит, состояния выхода нет
+	}
+	if !ps.Exited() || ps.ExitCode() == controlCExitStatus {
+		return errStoppedByUs
+	}
+	return nil
+}
+
+// fixStopError приводит ошибку завершения cmd к errStoppedByUs, если это была наша остановка,
+// а exec вернул nil (Windows: убитый процесс с кодом STATUS_CONTROL_C_EXIT). Используется в
+// RunInfo, где нельзя просто проигнорировать «успешный» выход отменённого процесса.
+func fixStopError(ctx context.Context, cmd *exec.Cmd, err error) error {
+	if err != nil {
+		return err
+	}
+	if ctx.Err() == nil {
+		return nil
+	}
+	ps := cmd.ProcessState
+	if ps == nil || !ps.Exited() || ps.ExitCode() == controlCExitStatus {
+		return errStoppedByUs
+	}
+	return nil
+}
+
+// StoppedByUs сообщает, что процесс завершился из-за нашей остановки (пауза/отмена), а не сам:
+// контекст отменён И процесс завершён сигналом (SIGINT/SIGTERM/Kill) либо кодом
+// STATUS_CONTROL_C_EXIT (Windows). Используется менеджером задач, чтобы не принимать ложную
+// «отмену» (например, Ctrl+C в родительской консоли) за реальную остановку загрузки.
+func StoppedByUs(ctx context.Context, cmd *exec.Cmd) bool {
+	if ctx.Err() == nil {
+		return false
+	}
+	ps := cmd.ProcessState
+	return ps == nil || !ps.Exited() || ps.ExitCode() == controlCExitStatus
+}
+
+// Alive проверяет, жив ли ещё запущенный процесс cmd (не завершился ли). Нужна менеджеру задач,
+// чтобы отличить ложную «отмену контекста» на Windows (сигнал консоли пометил ctx отменённым, но
+// процесс yt-dlp продолжает качать) от реальной остановки: если процесс жив — задача не паузится.
+// Требует уже выполненного cmd.Start(). Реализация кроссплатформенная: signal 0 ничего не делает,
+// но возвращает ошибку для завершённого процесса.
+func Alive(cmd *exec.Cmd) bool {
+	if cmd == nil || cmd.Process == nil {
+		return false
+	}
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+		return false
+	}
+	return cmd.Process.Signal(syscall.Signal(0)) == nil
 }
 
 // newCommand создаёт команду yt-dlp с привязкой к контексту и мягкой остановкой:
@@ -127,7 +220,8 @@ func newCommand(ctx context.Context, bin string, args []string) *exec.Cmd {
 }
 
 // scanOutput читает stdout построчно, передавая разобранный прогресс и итоговые пути файлов.
-// Остальные строки (не прогресс) при наличии h.Log пишутся в лог для диагностики.
+// Каждая строка также уходит в h.Witness (менеджер задач использует это как «свидетельство»,
+// что процесс реально работал). Остальные строки (не прогресс) при наличии h.Log пишутся в лог.
 func scanOutput(r io.Reader, h Handlers) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineBytes)
