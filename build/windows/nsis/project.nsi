@@ -36,7 +36,7 @@ Unicode true
 !define INFO_PROJECTNAME    "loadika-desktop"
 !define INFO_COMPANYNAME    "Mysterentc"
 !define INFO_PRODUCTNAME    "Loadika"
-!define INFO_PRODUCTVERSION "0.2.0"
+!define INFO_PRODUCTVERSION "0.2.1"
 !define INFO_COPYRIGHT      "© 2026, Mysterentc"
 ####
 ## Include the wails tools

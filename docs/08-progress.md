@@ -141,7 +141,7 @@ wails3 dev
 - `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/BUILD-AND-RELEASE.md`.
   AppImage собирается через `linuxdeploy` **без бандлинга** библиотек (системные GTK4/WebKitGTK 6.0) — там же.
 - `LICENSE` — MIT; та же лицензия в `build/linux/nfpm/nfpm.yaml`.
-- Версия (0.2.0) живёт в `internal/version/version.go`, `build/config.yml`,
+- Версия (0.2.1) живёт в `internal/version/version.go`, `build/config.yml`,
   `build/windows/info.json`, `build/windows/nsis/project.nsi`, `build/windows/msix/*.xml`,
   `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.
 

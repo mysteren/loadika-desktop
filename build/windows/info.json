@@ -1,10 +1,10 @@
 {
 	"fixed": {
-		"file_version": "0.2.0"
+		"file_version": "0.2.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.2.0",
+			"ProductVersion": "0.2.1",
 			"CompanyName": "Mysterentc",
 			"FileDescription": "Desktop wrapper for yt-dlp with proxy pool support",
 			"LegalCopyright": "© 2026, Mysterentc",
