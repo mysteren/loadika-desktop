@@ -13,6 +13,9 @@
 ```sh
 npm install
 npm run typecheck   # проверка типов
+npm run lint        # biome (линт/формат, проверка)
+npm run format      # biome (применить форматирование)
+npm test            # vitest
 npm run build       # production-сборка (обновляет dist/, который встраивает Go)
 ```
 

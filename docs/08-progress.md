@@ -107,13 +107,13 @@ wails3 dev
   `config/settings.ts` (каналы `yt-dlp`), `config/navigation.ts` (`PageId`/`DEFAULT_PAGE_ID`), `stores/navigation.ts` (стор навигации — программное переключение вкладок), `lib/theme.ts`, `lib/format.ts` (`formatBytes`, `formatDateTime`, `formatTimestamp`, `formatClock`, `formatDuration`), `lib/error.ts` (`toMessage`), `ui/` (`AppButton`, `AppProgress`, `IconCheck`, иконки).
 > Прокси в `shared/api`: `getProxies`/`getProxyStrategies`/`importProxies`/`removeProxy`/`setProxyEnabled`/`clearProxies`/`setProxyStrategy`/`checkProxies`.
 - `frontend/bindings/` — **генерируется**, не редактировать вручную.
-- `frontend/public/logo.svg` — логотип: монохромный силуэт (причёска с вырезом лица) в акцентном
+- `frontend/public/logo.svg` — логотип: монохромный силуэт-портрет в акцентном
   цвете, прозрачный фон; используется как CSS-маска (сайдбар) и favicon.
 
 **Иконки / инструменты:**
 - `frontend/public/logo.svg` — исходник знака: один цвет (`#9b5aa8`, совпадает с `brandColor`
-  генератора) и прозрачный фон; вырез лица сделан подпутём с противоположным обходом (oksvg/
-  rasterx работают по nonzero, а не по `fill-rule`).
+  генератора) и прозрачный фон; знак — составной контур (несколько `<path>`, включая детали
+  лица). Генератор перекрашивает его в белый и кладёт на акцентный фон.
 - `build/appicon.png` — иконка приложения (собрана из `frontend/public/logo.svg` через
   `tools/appicon`: акцентный скруглённый фон + белый знак); из неё `build/Taskfile.yml` →
   `generate:icons` (`wails3 generate icons`) делает `build/windows/icon.ico` и `build/darwin/icons.icns`.
@@ -141,8 +141,9 @@ wails3 dev
 - `.github/workflows/release.yml` — сборка и публикация релиза по тегу `v*` (Linux/Windows/macOS); см. `docs/BUILD-AND-RELEASE.md`.
   AppImage собирается через `linuxdeploy` **без бандлинга** библиотек (системные GTK4/WebKitGTK 6.0) — там же.
 - `LICENSE` — MIT; та же лицензия в `build/linux/nfpm/nfpm.yaml`.
-- Версия (0.1.0) живёт в `internal/version/version.go`, `build/config.yml`,
-  `build/windows/info.json`, `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.
+- Версия (0.1.4) живёт в `internal/version/version.go`, `build/config.yml`,
+  `build/windows/info.json`, `build/windows/nsis/project.nsi`, `build/windows/msix/*.xml`,
+  `build/darwin/Info*.plist`, `build/linux/nfpm/nfpm.yaml`.
 
 ## Решение по детальному блоку (3.1g)
 

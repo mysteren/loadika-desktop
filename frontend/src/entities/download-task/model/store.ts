@@ -90,7 +90,13 @@ export const useDownloadTaskStore = defineStore("download-task", () => {
       return;
     }
     const next = tasks.value.slice();
-    next[index] = { ...current, downloaded: p.downloaded, total: p.total, speed: p.speed, eta: p.eta };
+    next[index] = {
+      ...current,
+      downloaded: p.downloaded,
+      total: p.total,
+      speed: p.speed,
+      eta: p.eta,
+    };
     tasks.value = next;
   }
 

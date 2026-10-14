@@ -1,3 +1,4 @@
+// Package app собирает Wails-приложение: конфигурацию, окно, сервисы и жизненный цикл.
 package app
 
 import (
@@ -102,9 +103,13 @@ func Run(assets fs.FS, icon []byte) error {
 		Height:           720,
 		BackgroundColour: application.NewRGB(24, 24, 27),
 		Mac: application.MacWindow{
+			// MacTitleBarHidden (а не HiddenInset): HiddenInset в Wails создаёт пустой NSToolbar,
+			// из-за которого сверху окна появляется пустая полоса (её нет на Windows/Linux).
+			// Здесь контент заполняет окно целиком, «светофор» рисуется поверх левого верхнего
+			// угла; InvisibleTitleBarHeight оставляет зону перетаскивания за шапку.
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
+			TitleBar:                application.MacTitleBarHidden,
 		},
 		URL: "/",
 	})

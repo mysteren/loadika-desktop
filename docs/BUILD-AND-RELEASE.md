@@ -116,6 +116,8 @@ cd frontend && npm run typecheck && npm run build
 - `build/darwin/Info.plist` и `build/darwin/Info.dev.plist` → `CFBundleVersion` и
   `CFBundleShortVersionString`
 - `build/linux/nfpm/nfpm.yaml` → `version`
+- `build/windows/nsis/project.nsi` → `INFO_PRODUCTVERSION` (данные продукта и путь установки для NSIS)
+- `build/windows/msix/template.xml` и `build/windows/msix/app_manifest.xml` → `Version` (для MSIX)
 
 > Версию правим точечно, а не через `wails3 task common:update:build-assets`: эта команда
 > пересобирает платформенные ассеты из `config.yml`, но **затирает ручные правки** в `build/**`
@@ -167,6 +169,9 @@ AppImage собирается на **системных** библиотеках
 
 - Сменить данные продукта — в `build/config.yml` (`productName`, `productIdentifier`, `version`,
   `copyright`, …).
+- **Установщик Windows (NSIS):** данные продукта и путь установки — в
+  `build/windows/nsis/project.nsi` (`INFO_COMPANYNAME` / `INFO_PRODUCTNAME` → `C:\Program Files\Mysterentc\Loadika`);
+  эти `!define` перебивают шаблонные дефолты в `wails_tools.nsh`.
 - Сменить иконку: положить новый логотип в `frontend/public/logo.svg` и перегенерировать иконку
   приложения:
   ```sh

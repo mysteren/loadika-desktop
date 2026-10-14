@@ -1,3 +1,4 @@
+// Package config описывает модель настроек приложения и их загрузку/сохранение.
 package config
 
 import (

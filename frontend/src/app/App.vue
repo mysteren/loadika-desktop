@@ -32,7 +32,7 @@ onMounted(async () => {
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-logo" aria-hidden="true" />
-        <span class="brand-name">Loadika</span>
+        <span class="brand-name">Лоадика</span>
       </div>
 
       <nav class="nav">
@@ -82,13 +82,14 @@ onMounted(async () => {
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   padding: var(--space-3);
+  padding-top: calc(var(--space-4));
 }
 
 .brand-logo {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   background-color: var(--color-accent);
   /* Знак отрисовывается маской, поэтому наследует primary-цвет и меняется вместе с темой. */
   -webkit-mask: url("/logo.svg") center / contain no-repeat;
@@ -96,7 +97,7 @@ onMounted(async () => {
 }
 
 .brand-name {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
 }
 

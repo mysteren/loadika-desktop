@@ -112,3 +112,34 @@
 | FSD-слайс/папка | kebab-case | `manage-proxy-pool` |
 | Константы | UPPER_SNAKE | `MAX_RETRIES` |
 | Событие | `domain:action` | `task:progress` |
+
+---
+
+## Линтеры, формат и тесты
+
+Инструменты и команды (всё офлайн):
+
+| Что | Инструмент | Команда |
+|-----|-----------|---------|
+| Go: линт | `golangci-lint` (`.golangci.yml`) | `golangci-lint run` |
+| Go: формат | `gofmt`/`goimports` | `golangci-lint fmt` |
+| Go: тесты | `go test` | `go test ./...` |
+| Фронт: линт/формат | `biome` (`frontend/biome.json`) | `npm run lint` / `npm run format` |
+| Фронт: типы | `vue-tsc` | `npm run typecheck` |
+| Фронт: тесты | `vitest` | `npm test` |
+
+Полный набор — `task check`; отдельно — `task lint`, `task typecheck`, `task test`.
+В CI (`.github/workflows/ci.yml`) выполняются те же проверки.
+
+Тесты — рядом с кодом: Go — `*_test.go`, фронт — `*.test.ts` (чистые функции, `vitest`).
+
+**Осознанные отступления (почему):**
+
+- В `biome` отключены `noUnusedVariables`/`noUnusedImports` — они ложно срабатывают на
+  использовании в `<template>` Vue; за неиспользуемое отвечает `vue-tsc`
+  (`noUnusedLocals`/`noUnusedParameters`), который шаблоны понимает.
+- Отключён ассист сортировки импортов — исторический порядок; включать — отдельным решением.
+- Отключён `useShorthandFunctionType`: конфликтует с принятым стилем типов эмитов
+  `defineEmits<{ (e: 'x', ...): void }>()`.
+- В `golangci-lint` исключены идиоматичные `errcheck` на `Close`/`fmt.Fprint*` и стилевая
+  рекомендация `staticcheck` QF1001; платформенные заготовки `build/` не анализируются.

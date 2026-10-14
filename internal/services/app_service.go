@@ -1,3 +1,4 @@
+// Package services содержит тонкие Wails-сервисы — адаптеры между фронтендом и доменами.
 package services
 
 import (

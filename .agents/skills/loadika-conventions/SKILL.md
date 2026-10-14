@@ -8,6 +8,10 @@ description: Coding conventions and architecture rules for the Loadika Desktop r
 Apply these rules to any code change in this repository. This skill is the short, enforceable
 checklist; the full rationale lives in the docs.
 
+The portable repo standard (stack, skeleton, boundaries, verification, FSD) is
+[`PROJECT-BLUEPRINT.md`](../../../PROJECT-BLUEPRINT.md); agent rules are [`AGENTS.md`](../../../AGENTS.md).
+This skill points to them — it does not restate them.
+
 Before a non-trivial change, read the relevant doc:
 
 - `docs/03-frontend-fsd.md` — FSD structure and import rules.

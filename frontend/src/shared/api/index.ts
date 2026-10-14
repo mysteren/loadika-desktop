@@ -1,11 +1,32 @@
-import { AppService, DepsService, DownloadService, HistoryService, ProxyService, SettingsService, SystemService } from "@bindings/loadika-desktop/internal/services";
-import type { AppInfo, DownloadMeta, ImportResult, Settings } from "@bindings/loadika-desktop/internal/services/models";
+import {
+  AppService,
+  DepsService,
+  DownloadService,
+  HistoryService,
+  ProxyService,
+  SettingsService,
+  SystemService,
+} from "@bindings/loadika-desktop/internal/services";
+import type {
+  AppInfo,
+  DownloadMeta,
+  ImportResult,
+  Settings,
+} from "@bindings/loadika-desktop/internal/services/models";
 import type { Dependency } from "@bindings/loadika-desktop/internal/deps";
-import type { Inspect, LogLine as TaskLogLine, QualityOption, Task } from "@bindings/loadika-desktop/internal/download";
+import type {
+  Inspect,
+  LogLine as TaskLogLine,
+  QualityOption,
+  Task,
+} from "@bindings/loadika-desktop/internal/download";
 import type { Entry as HistoryEntry } from "@bindings/loadika-desktop/internal/history";
 import type { View as ProxyView } from "@bindings/loadika-desktop/internal/proxy";
 import type { Format } from "@bindings/loadika-desktop/internal/ytdlp";
-import type { Browser as CookieBrowser, Profile as CookieProfile } from "@bindings/loadika-desktop/internal/browsers";
+import type {
+  Browser as CookieBrowser,
+  Profile as CookieProfile,
+} from "@bindings/loadika-desktop/internal/browsers";
 
 // Слой доступа к бэкенду: здесь оборачиваются сгенерированные Wails-биндинги.
 // Компоненты и слайсы обязаны использовать этот слой, а не импортировать биндинги напрямую.

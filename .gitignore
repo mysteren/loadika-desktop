@@ -2,6 +2,8 @@
 bin
 frontend/dist
 frontend/node_modules
+# Скомпилированный бинарь генератора иконок (собирается из tools/appicon, не коммитим)
+tools/appicon/loadika-appicon
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # Генерируется при упаковке (AppImage/deb): не храним в репозитории

@@ -31,6 +31,14 @@ Unicode true
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ## !define WAILS_INSTALL_SCOPE     "user"             # Default "machine" - set to "user" for per-user install ($LOCALAPPDATA) without UAC prompt
 ####
+## Данные продукта (переопределяют шаблонные дефолты из wails_tools.nsh).
+## Путь установки по умолчанию: $PROGRAMFILES64\Mysterentc\Loadika.
+!define INFO_PROJECTNAME    "loadika-desktop"
+!define INFO_COMPANYNAME    "Mysterentc"
+!define INFO_PRODUCTNAME    "Loadika"
+!define INFO_PRODUCTVERSION "0.1.4"
+!define INFO_COPYRIGHT      "© 2026, Mysterentc"
+####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
