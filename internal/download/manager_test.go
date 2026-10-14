@@ -166,8 +166,14 @@ func TestManagerStartCompletes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	if task.State != StateQueued || task.ID == "" {
-		t.Fatalf("начальная задача = %+v", task)
+	if task.ID == "" {
+		t.Fatalf("начальная задача без ID = %+v", task)
+	}
+	// Слот свободен — schedule сразу переводит задачу в running, поэтому снимок Start не должен
+	// остаться queued (это и есть фикс гонки с событием task:state). К моменту Get фейковый runner
+	// мог успеть завершиться, так что допускаем и completed.
+	if task.State == StateQueued {
+		t.Errorf("снимок Start остался queued при свободном слоте: %+v", task)
 	}
 
 	final := waitState(t, done, StateCompleted)
@@ -196,6 +202,32 @@ func TestManagerStartCompletes(t *testing.T) {
 	if list := m.List(); len(list) != 1 {
 		t.Errorf("List вернул %d задач, want 1", len(list))
 	}
+}
+
+// TestManagerStartReturnsLiveSnapshot проверяет, что Start отдаёт актуальный снимок: при свободном
+// слоте задача уже running. Иначе UI «застывал» бы на queued, если событие task:state придёт раньше
+// ответа Create и будет потеряно.
+func TestManagerStartReturnsLiveSnapshot(t *testing.T) {
+	m := NewManager()
+	m.SetConcurrency(1)
+	release := make(chan struct{})
+	m.run = func(ctx context.Context, _ string, _ []string, _ ytdlp.Handlers) error {
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	task, err := m.Start(testRequest("https://example.com/v", "/tmp/dl"), nil, nil)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if task.State != StateRunning {
+		t.Fatalf("снимок Start = %q, want %q (живой снимок, а не queued)", task.State, StateRunning)
+	}
+	close(release)
 }
 
 func TestManagerStartPassesFormat(t *testing.T) {

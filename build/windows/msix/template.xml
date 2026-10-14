@@ -17,7 +17,7 @@
         PackageDisplayName="Loadika"
         PublisherName="CN=Mysterentc"
         PublisherDisplayName="Mysterentc"
-        Version="0.1.4.0"
+        Version="0.2.0.0"
         PackageDescription="Desktop wrapper for yt-dlp with proxy pool support">
         <Capabilities>
             <Capability Name="runFullTrust" />

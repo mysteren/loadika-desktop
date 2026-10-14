@@ -6,7 +6,7 @@
 name: "loadika-desktop"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.4"
+version: "0.2.0"
 section: "default"
 priority: "extra"
 maintainer: "Mysterentc <mysteren@users.noreply.github.com>"
